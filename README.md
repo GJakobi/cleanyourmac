@@ -1,6 +1,10 @@
 # CleanYourMac
 
-A simple macOS utility to find large files and clean up your disk space.
+A simple macOS utility to find large files and clean up your disk space without needing to pay ONE BILLION DOLLARS FOR A FANCY UI.
+
+# Download
+
+You can download the latest release [here](https://github.com/GJakobi/cleanyourmac/releases).
 
 ## Features
 
@@ -8,7 +12,7 @@ A simple macOS utility to find large files and clean up your disk space.
 - Sort files by size (largest first)
 - Select and delete unwanted files
 
-## Requirements
+## Requirements for building
 
 - macOS 13.0 or later
 - Xcode 14.0 or later
