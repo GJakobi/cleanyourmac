@@ -9,6 +9,9 @@ struct CleanYourMacApp: App {
         WindowGroup {
             ContentView()
                 .frame(minWidth: 800, minHeight: 500)
+                .onAppear {
+                    NSApp.activate(ignoringOtherApps: true)
+                }
         }
         .windowStyle(.titleBar)
         .windowToolbarStyle(.unified)
@@ -17,6 +20,9 @@ struct CleanYourMacApp: App {
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Ensure the app becomes active and gets focus
+        NSApp.activate(ignoringOtherApps: true)
+        
         // Ensure the app has a proper menu
         let mainMenu = NSMenu(title: "MainMenu")
         
@@ -48,5 +54,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Set the menu
         NSApplication.shared.mainMenu = mainMenu
+    }
+    
+    func applicationDidBecomeActive(_ notification: Notification) {
+        // Make sure the window is brought to front
+        NSApp.windows.first?.makeKeyAndOrderFront(nil)
     }
 }
