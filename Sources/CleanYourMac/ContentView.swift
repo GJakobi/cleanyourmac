@@ -8,6 +8,7 @@ struct ContentView: View {
     @State private var selectedFiles: Set<URL> = []
     @State private var errorMessage: String? = nil
     @State private var scanDepth: Int = 3 // Default recursive depth
+    @State private var freedSpace: Int64 = 0 // To track freed space
     @FocusState private var isSearchFieldFocused: Bool
     
     var body: some View {
@@ -76,12 +77,34 @@ struct ContentView: View {
                                         selectedFiles.remove(file.url)
                                     }
                                 }
+                                .contextMenu {
+                                    Button("Open in Finder") {
+                                        NSWorkspace.shared.activateFileViewerSelecting([file.url])
+                                    }
+                                    
+                                    Button("Reveal in Finder") {
+                                        NSWorkspace.shared.selectFile(file.url.path, inFileViewerRootedAtPath: "")
+                                    }
+                                    
+                                    Button("Copy Path") {
+                                        NSPasteboard.general.clearContents()
+                                        NSPasteboard.general.setString(file.path, forType: .string)
+                                    }
+                                }
                             }
                         }
                     }
                     
                     HStack {
-                        Text("Selected: \(selectedFiles.count) files")
+                        VStack(alignment: .leading) {
+                            Text("Selected: \(selectedFiles.count) files")
+                            if freedSpace > 0 {
+                                Text("Freed space: \(formatFileSize(freedSpace))")
+                                    .foregroundColor(.green)
+                                    .bold()
+                            }
+                        }
+                        
                         Spacer()
                         Button("Delete Selected") {
                             deleteSelectedFiles()
@@ -233,9 +256,14 @@ struct ContentView: View {
     private func deleteSelectedFiles() {
         let fileManager = FileManager.default
         var failedFiles: [String] = []
+        var spaceFreed: Int64 = 0
         
         for fileURL in selectedFiles {
             do {
+                if let fileSize = getFileSize(at: fileURL) {
+                    spaceFreed += fileSize
+                }
+                
                 try fileManager.removeItem(at: fileURL)
                 if let index = files.firstIndex(where: { $0.url == fileURL }) {
                     files.remove(at: index)
@@ -246,12 +274,32 @@ struct ContentView: View {
             }
         }
         
+        // Update the total freed space
+        freedSpace += spaceFreed
+        
         selectedFiles = []
         
         if !failedFiles.isEmpty {
             let failedFilesList = failedFiles.joined(separator: ", ")
             self.errorMessage = "Failed to delete some files: \(failedFilesList). You might not have permission to delete these files."
         }
+    }
+    
+    private func getFileSize(at url: URL) -> Int64? {
+        do {
+            let resourceValues = try url.resourceValues(forKeys: [.fileSizeKey])
+            return Int64(resourceValues.fileSize ?? 0)
+        } catch {
+            print("Error getting file size: \(error.localizedDescription)")
+            return nil
+        }
+    }
+    
+    private func formatFileSize(_ size: Int64) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useAll]
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: size)
     }
 }
 

@@ -2,7 +2,8 @@
 
 # Set variables
 APP_NAME="CleanYourMac"
-BUILD_DIR=".build/release"
+# Get the correct build directory from Swift Package Manager
+BUILD_DIR=$(swift build -c release --show-bin-path)
 DIST_DIR="dist"
 APP_BUNDLE="$DIST_DIR/$APP_NAME.app"
 CONTENTS="$APP_BUNDLE/Contents"
@@ -17,6 +18,7 @@ mkdir -p "$MACOS"
 mkdir -p "$RESOURCES"
 
 # Copy the executable
+echo "Copying executable from $BUILD_DIR/$APP_NAME"
 cp "$BUILD_DIR/$APP_NAME" "$MACOS/"
 
 # Create Info.plist
@@ -28,9 +30,9 @@ cat > "$CONTENTS/Info.plist" << EOF
     <key>CFBundleExecutable</key>
     <string>$APP_NAME</string>
     <key>CFBundleIdentifier</key>
-    <string>com.example.$APP_NAME</string>
+    <string>com.gjakobi.$APP_NAME</string>
     <key>CFBundleName</key>
-    <string>$APP_NAME</string>feafea
+    <string>$APP_NAME</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleShortVersionString</key>
