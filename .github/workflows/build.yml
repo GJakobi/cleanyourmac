@@ -26,7 +26,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      # --- 2. Cache Dependencies ---
+      # --- 2. Setup Swift Environment ---
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.0" # Ensures the correct Swift version for your project
+
+      # --- 3. Cache Dependencies ---
       # Cache Swift Package Manager dependencies to speed up future builds.
       - name: Cache Swift PM dependencies
         uses: actions/cache@v4
@@ -36,14 +42,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-spm-
 
-      # --- 3. Run the Build Script ---
+      # --- 4. Run the Build Script ---
       # The build script handles building the app and creating the .app bundle.
       - name: Run build script
         run: |
           chmod +x build_app.sh
           ./build_app.sh
 
-      # --- 4. Package the App into a DMG ---
+      # --- 5. Package the App into a DMG ---
       - name: Install create-dmg tool
         run: brew install create-dmg
 
@@ -58,7 +64,7 @@ jobs:
             "dist/CleanYourMac.dmg" \
             "dist/CleanYourMac.app"
 
-      # --- 5. Upload Artifact ---
+      # --- 6. Upload Artifact ---
       # Upload the final DMG so it can be used by the release job.
       - name: Upload DMG as an artifact
         uses: actions/upload-artifact@v4
