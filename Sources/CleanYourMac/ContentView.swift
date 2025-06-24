@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 
+@MainActor
 struct ContentView: View {
     @State private var searchPath: String = ""
     @State private var files: [FileItem] = []
