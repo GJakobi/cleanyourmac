@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 
+@MainActor
 @main
 struct CleanYourMacApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
