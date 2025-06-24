@@ -1,25 +1,44 @@
 #!/bin/bash
 
+# Exit immediately if a command exits with a non-zero status.
+set -e
+
 # Set variables
 APP_NAME="CleanYourMac"
+
+echo "--- Building application ---"
+# Build the app in release mode
+swift build -c release
+
 # Get the correct build directory from Swift Package Manager
 BUILD_DIR=$(swift build -c release --show-bin-path)
+echo "Build directory is: $BUILD_DIR"
+echo "--- Listing contents of build directory ---"
+ls -l "$BUILD_DIR"
+
 DIST_DIR="dist"
 APP_BUNDLE="$DIST_DIR/$APP_NAME.app"
 CONTENTS="$APP_BUNDLE/Contents"
 MACOS="$CONTENTS/MacOS"
 RESOURCES="$CONTENTS/Resources"
 
-# Build the app in release mode
-swift build -c release
-
 # Create app bundle structure
+echo "--- Creating .app bundle structure ---"
 mkdir -p "$MACOS"
 mkdir -p "$RESOURCES"
 
+# Check if the executable exists
+EXECUTABLE_PATH="$BUILD_DIR/$APP_NAME"
+if [ ! -f "$EXECUTABLE_PATH" ]; then
+    echo "ERROR: Executable not found at $EXECUTABLE_PATH"
+    exit 1
+fi
+
 # Copy the executable
-echo "Copying executable from $BUILD_DIR/$APP_NAME"
-cp "$BUILD_DIR/$APP_NAME" "$MACOS/"
+echo "--- Copying executable to .app bundle ---"
+cp "$EXECUTABLE_PATH" "$MACOS/"
+echo "--- Listing contents of MacOS directory in .app bundle ---"
+ls -l "$MACOS"
 
 # Create Info.plist
 cat > "$CONTENTS/Info.plist" << EOF
@@ -54,7 +73,10 @@ cat > "$CONTENTS/Info.plist" << EOF
 EOF
 
 # Copy resource files
+echo "--- Copying resources ---"
 cp -R Sources/CleanYourMac/Resources/* "$RESOURCES/" 2>/dev/null || :
 
-echo "App bundle created at $APP_BUNDLE"
+echo "--- .app bundle created successfully ---"
+echo "Location: $APP_BUNDLE"
+
 echo "You can now run it by opening the app bundle or using 'open $APP_BUNDLE'" 
