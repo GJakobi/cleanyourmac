@@ -1,47 +1,62 @@
 #!/bin/bash
 
-# Exit immediately if a command exits with a non-zero status.
-set -e
+# A robust script to build a macOS .app bundle from a Swift Package.
+# This script will exit immediately if any command fails.
+set -eo pipefail
 
-# Set variables
-APP_NAME="CleanYourMac"
+# --- Configuration ---
+readonly APP_NAME="CleanYourMac"
+readonly DIST_DIR="dist"
+readonly APP_BUNDLE_PATH="$DIST_DIR/$APP_NAME.app"
 
-echo "--- Building application ---"
-# Build the app in release mode
-swift build -c release
+# --- Helper Functions ---
+log() {
+    echo "▶ $1"
+}
 
-# Get the correct build directory from Swift Package Manager
-BUILD_DIR=$(swift build -c release --show-bin-path)
-echo "Build directory is: $BUILD_DIR"
-echo "--- Listing contents of build directory ---"
-ls -l "$BUILD_DIR"
+# --- Main Build Logic ---
+main() {
+    log "Starting build process for $APP_NAME..."
 
-DIST_DIR="dist"
-APP_BUNDLE="$DIST_DIR/$APP_NAME.app"
-CONTENTS="$APP_BUNDLE/Contents"
-MACOS="$CONTENTS/MacOS"
-RESOURCES="$CONTENTS/Resources"
+    # 1. Clean up previous build artifacts
+    log "Cleaning up old build artifacts in '$DIST_DIR'..."
+    rm -rf "$DIST_DIR"
+    mkdir -p "$DIST_DIR"
 
-# Create app bundle structure
-echo "--- Creating .app bundle structure ---"
-mkdir -p "$MACOS"
-mkdir -p "$RESOURCES"
+    # 2. Build the Swift package in release mode
+    log "Building Swift package in release configuration..."
+    swift build -c release
 
-# Check if the executable exists
-EXECUTABLE_PATH="$BUILD_DIR/$APP_NAME"
-if [ ! -f "$EXECUTABLE_PATH" ]; then
-    echo "ERROR: Executable not found at $EXECUTABLE_PATH"
-    exit 1
-fi
+    # 3. Determine the architecture-specific build directory
+    local build_dir
+    build_dir=$(swift build -c release --show-bin-path)
+    log "Build directory determined as: $build_dir"
 
-# Copy the executable
-echo "--- Copying executable to .app bundle ---"
-cp "$EXECUTABLE_PATH" "$MACOS/"
-echo "--- Listing contents of MacOS directory in .app bundle ---"
-ls -l "$MACOS"
+    # 4. Create the .app bundle structure
+    log "Creating .app bundle structure at '$APP_BUNDLE_PATH'..."
+    local macos_dir="$APP_BUNDLE_PATH/Contents/MacOS"
+    local resources_dir="$APP_BUNDLE_PATH/Contents/Resources"
+    mkdir -p "$macos_dir"
+    mkdir -p "$resources_dir"
 
-# Create Info.plist
-cat > "$CONTENTS/Info.plist" << EOF
+    # 5. Copy the executable
+    log "Copying executable..."
+    local executable_path="$build_dir/$APP_NAME"
+    if [[ ! -f "$executable_path" ]]; then
+        log "ERROR: Executable not found at '$executable_path'"
+        exit 1
+    fi
+    cp "$executable_path" "$macos_dir/"
+    log "Executable copied to '$macos_dir'"
+
+    # 6. Create Info.plist with automatic versioning
+    # It will use the latest git tag (like v1.2.3) as the version.
+    local version
+    version=$(git describe --tags --abbrev=0 2>/dev/null || echo "1.0.0")
+    log "Using version '$version' for Info.plist"
+
+    log "Creating Info.plist..."
+    cat > "$APP_BUNDLE_PATH/Contents/Info.plist" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -52,31 +67,34 @@ cat > "$CONTENTS/Info.plist" << EOF
     <string>com.gjakobi.$APP_NAME</string>
     <key>CFBundleName</key>
     <string>$APP_NAME</string>
-    <key>CFBundleIconFile</key>
-    <string>AppIcon</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
-    <key>CFBundleInfoDictionaryVersion</key>
-    <string>6.0</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
-    <key>CFBundleSignature</key>
-    <string>????</string>
-    <key>NSFileManagerUsageDescription</key>
-    <string>CleanYourMac needs access to your files to scan and manage them.</string>
+    <key>CFBundleShortVersionString</key>
+    <string>$version</string>
+    <key>CFBundleVersion</key>
+    <string>$version</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
 </dict>
 </plist>
 EOF
 
-# Copy resource files
-echo "--- Copying resources ---"
-cp -R Sources/CleanYourMac/Resources/* "$RESOURCES/" 2>/dev/null || :
+    # 7. Copy resource files (if any exist)
+    log "Copying resources..."
+    local app_resources_dir="Sources/$APP_NAME/Resources"
+    if [[ -d "$app_resources_dir" ]] && [[ -n "$(ls -A "$app_resources_dir")" ]]; then
+        cp -R "$app_resources_dir"/* "$resources_dir/"
+    else
+        log "No resources found to copy."
+    fi
 
-echo "--- .app bundle created successfully ---"
-echo "Location: $APP_BUNDLE"
+    log "✅ Build successful!"
+    log "App bundle located at: $APP_BUNDLE_PATH"
+}
 
-echo "You can now run it by opening the app bundle or using 'open $APP_BUNDLE'" 
+# --- Run main function ---
+main 
